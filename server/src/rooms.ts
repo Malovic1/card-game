@@ -9,7 +9,7 @@ import type {
   Player,
   GameState,
 } from './types';
-import { nextSeat } from './types';
+import { CARDS_PER_PLAYER, nextSeat } from './types';
 import {
   createPlayer,
   newGameState,
@@ -17,7 +17,9 @@ import {
   playCard,
   advanceAfterTrick,
   botChooseCard,
+  callDeclaration,
   findCard,
+  findDeclarations,
 } from './game';
 
 const rooms = new Map<string, Room>();
@@ -78,8 +80,15 @@ function publicRoom(room: Room): Room {
 }
 
 function redactGame(game: GameState, viewerId: string | null): GameState {
+  const viewer = game.players.find((p) => p.id === viewerId);
+  const callable = viewer && viewer.hand.length === CARDS_PER_PLAYER
+    ? findDeclarations(viewer.hand).filter(
+        (offer) => !game.declarations.some((called) => called.seat === viewer.seat && called.id === offer.id),
+      )
+    : [];
   return {
     ...game,
+    callable,
     players: game.players.map((p) => ({
       ...p,
       hand: p.id === viewerId ? p.hand : [],
@@ -205,9 +214,17 @@ function maybeBotTurn(io: IOServer, room: Room) {
     if (live.game.currentTurnSeat !== seat) return;
     const bot = live.game.players.find((p) => p.seat === seat);
     if (!bot?.isBot || bot.hand.length === 0) return;
-    const card = botChooseCard(bot.hand, live.game.trick?.ledSuit ?? null, live.game.trick, seat);
+    let gameState = live.game;
+    if (bot.hand.length === CARDS_PER_PLAYER) {
+      for (const offer of findDeclarations(bot.hand)) {
+        if (!gameState.declarations.some((called) => called.seat === seat && called.id === offer.id)) {
+          gameState = callDeclaration(gameState, seat, offer.id);
+        }
+      }
+    }
+    const card = botChooseCard(bot.hand, gameState.trick);
     try {
-      const { game: next, trickComplete } = playCard(live.game, seat, card);
+      const { game: next, trickComplete } = playCard(gameState, seat, card);
       const updated: Room = { ...live, game: next };
       rooms.set(updated.id, updated);
       pushState(io, updated);
@@ -469,6 +486,36 @@ export function setupSocketIo(httpServer: HttpServer): IOServer {
         cb?.({ ok: true });
         if (trickComplete) scheduleTrickResolution(io, room.id);
         else maybeBotTurn(io, updated);
+      } catch (err) {
+        fail((err as Error).message);
+      }
+    });
+
+    socket.on('call-declaration', ({ roomId, declarationId }, cb) => {
+      const fail = (error: string) => {
+        cb?.({ ok: false, error });
+        socket.emit('error', { message: error });
+      };
+      if (socket.data.roomId !== roomId || !socket.data.playerId) {
+        fail('Niste u toj sobi');
+        return;
+      }
+      const room = getRoom(roomId);
+      if (!room?.game) {
+        fail('Igra nije pokrenuta');
+        return;
+      }
+      const player = room.game.players.find((p) => p.id === socket.data.playerId);
+      if (!player) {
+        fail('Igrač nije u igri');
+        return;
+      }
+      try {
+        const game = callDeclaration(room.game, player.seat, declarationId);
+        const updated: Room = { ...room, game };
+        rooms.set(updated.id, updated);
+        pushState(io, updated);
+        cb?.({ ok: true });
       } catch (err) {
         fail((err as Error).message);
       }

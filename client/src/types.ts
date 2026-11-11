@@ -30,6 +30,17 @@ export interface Trick {
   complete: boolean;
 }
 
+export interface DeclarationOffer {
+  id: string;
+  name: string;
+  points: number;
+}
+
+export interface CalledDeclaration extends DeclarationOffer {
+  seat: number;
+  team: 0 | 1;
+}
+
 export interface GameState {
   phase: 'lobby' | 'playing' | 'hand-over' | 'game-over';
   players: Player[];
@@ -41,6 +52,8 @@ export interface GameState {
   }>;
   scores: { 0: number; 1: number };
   handPoints: { 0: number; 1: number };
+  declarations: CalledDeclaration[];
+  callable?: DeclarationOffer[];
   lastTrickWinnerSeat: number | null;
   dealerSeat: number;
   targetPoints: number;

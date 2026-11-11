@@ -171,6 +171,30 @@ h2 { margin: 0 0 6px; }
 }
 .status.mine { background: var(--accent); color: #1c1400; }
 
+.decl-bar, .called-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+.decl-chip, .called-chip {
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 800;
+  font-size: 13px;
+}
+.decl-chip {
+  background: var(--accent);
+  color: #1c1400;
+  border: none;
+}
+.decl-chip:disabled { opacity: 0.55; cursor: default; }
+.called-chip {
+  background: rgba(255,255,255,0.1);
+  color: var(--text);
+}
+
 .felt {
   position: relative;
   flex: 1 1 auto;

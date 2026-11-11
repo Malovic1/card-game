@@ -3,7 +3,7 @@ import type { Socket } from 'socket.io-client';
 import type { Card, GameState, Player, Room, Suit } from './types';
 import { AVATARS, RANK_LABELS, SUIT_LABELS, type RoomSummary } from './types';
 import { connect } from './services/socket';
-import { cardColor, formatPoints, rankGlyph, sortHand, suitSymbol } from './lib/cards';
+import { cardColor, formatPoints, isLegalCard, mustPlayHigher, rankGlyph, sortHand, suitSymbol } from './lib/cards';
 
 type Screen = 'home' | 'rooms' | 'lobby' | 'table';
 type Link = 'connecting' | 'online' | 'offline';
@@ -301,15 +301,30 @@ export default function App() {
     if (game.phase !== 'playing' || game.trick?.complete) return false;
     if (game.currentTurnSeat !== mySeat) return false;
     if (busyRef.current) return false;
-    const led = game.trick?.ledSuit ?? null;
-    if (led && me.hand.some((c) => c.suit === led) && card.suit !== led) return false;
-    return true;
+    return isLegalCard(me.hand, game.trick, card);
+  }
+
+  function callDeclaration(declarationId: string) {
+    if (!room || !game || mySeat === null) return;
+    if (game.currentTurnSeat !== mySeat) {
+      setError('Najavu zovete na svom redu');
+      return;
+    }
+    socketRef.current?.emit(
+      'call-declaration',
+      { roomId: room.id, declarationId },
+      (resp: { ok: boolean; error?: string }) => {
+        if (!resp?.ok) setError(resp?.error || 'Ne mogu zvati najavu');
+      },
+    );
   }
 
   function playCard(card: Card) {
     if (!room || !game || busyRef.current) return;
     if (!canPlay(card)) {
+      const led = game.trick?.ledSuit;
       if (game.currentTurnSeat !== mySeat) setError('Niste na redu');
+      else if (led && me?.hand.some((c) => c.suit === led) && card.suit === led) setError('Morate baciti jaču kartu');
       else setError('Morate odgovoriti u boji');
       return;
     }
@@ -344,7 +359,7 @@ export default function App() {
           }}
         >
           <h1>Trešeta</h1>
-          <p className="hint">Četiri igrača, dva para. Odgovorite u boju. Jači su 3, 2, as, kralj, konj, špic. Igra se do 21.</p>
+          <p className="hint">Četiri igrača, dva para. Odgovorite u boju, a ako možete jače, morate jače. Najave se zovu prije prve karte. Igra se do 21.</p>
           {error && <div className="error">{error}</div>}
           <input
             className="input"
@@ -470,6 +485,7 @@ export default function App() {
           busy={busy}
           canPlay={canPlay}
           onPlay={playCard}
+          onCall={callDeclaration}
           onLeave={leave}
           onNext={() => socketRef.current?.emit('next-hand')}
           onAgain={() => { leave(); quickPlay(); }}
@@ -490,6 +506,7 @@ function Table({
   busy,
   canPlay,
   onPlay,
+  onCall,
   onLeave,
   onNext,
   onAgain,
@@ -504,6 +521,7 @@ function Table({
   busy: boolean;
   canPlay: (card: Card) => boolean;
   onPlay: (card: Card) => void;
+  onCall: (declarationId: string) => void;
   onLeave: () => void;
   onNext: () => void;
   onAgain: () => void;
@@ -525,6 +543,8 @@ function Table({
     status = `Ruka gotova · Mi ${formatPoints(game.handPoints[myTeam])} : ${formatPoints(game.handPoints[oppTeam])} Oni`;
   } else if (game.trick?.complete) {
     status = `Štih nosi ${winnerName ?? ''}`;
+  } else if (myTurn && mustPlayHigher(me?.hand ?? [], game.trick)) {
+    status = `Vi ste na redu · morate jače (${led ? SUIT_LABELS[led] : ''})`;
   } else if (myTurn) {
     status = led && me?.hand.some((c) => c.suit === led)
       ? `Vi ste na redu · ${SUIT_LABELS[led]}`
@@ -558,6 +578,37 @@ function Table({
       </header>
 
       {error && <div className="error banner">{error}</div>}
+      {(game.callable?.length ?? 0) > 0 && (
+        <div className="decl-bar">
+          {(game.callable ?? []).map((offer) => (
+            <button
+              key={offer.id}
+              type="button"
+              className="decl-chip"
+              disabled={!myTurn}
+              onClick={() => onCall(offer.id)}
+            >
+              Zovi {offer.name} · +{formatPoints(offer.points)}
+            </button>
+          ))}
+          <span className="hint">
+            {myTurn ? 'Zovite prije prve karte' : 'Imate najavu — zovite na svom redu, prije prve karte'}
+          </span>
+        </div>
+      )}
+      {game.declarations.length > 0 && (
+        <div className="called-bar">
+          {game.declarations.map((called) => {
+            const who = game.players.find((p) => p.seat === called.seat);
+            const label = who?.id === me?.id ? 'Vi' : who?.name ?? '';
+            return (
+              <span key={`${called.seat}-${called.id}`} className="called-chip">
+                {label}: {called.name} +{formatPoints(called.points)}
+              </span>
+            );
+          })}
+        </div>
+      )}
       <div className={`status ${myTurn ? 'mine' : ''}`}>{status}</div>
 
       <div className="felt">

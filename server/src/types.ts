@@ -31,6 +31,18 @@ export interface Trick {
   complete: boolean;
 }
 
+export interface DeclarationOffer {
+  id: string;
+  name: string;
+  /** Whole points stored in thirds, same scale as card points. 3 points = 9. */
+  points: number;
+}
+
+export interface CalledDeclaration extends DeclarationOffer {
+  seat: number;
+  team: 0 | 1;
+}
+
 export interface GameState {
   phase: 'lobby' | 'playing' | 'hand-over' | 'game-over';
   players: Player[];
@@ -42,6 +54,10 @@ export interface GameState {
   }>;
   scores: { 0: number; 1: number }; // total match points per team
   handPoints: { 0: number; 1: number }; // current hand card points per team
+  /** Akuzi called this hand. Their points are already included in `scores`. */
+  declarations: CalledDeclaration[];
+  /** Filled only on the copy sent to the player who can call them. */
+  callable?: DeclarationOffer[];
   lastTrickWinnerSeat: number | null;
   dealerSeat: number;
   targetPoints: number;
@@ -164,6 +180,10 @@ export interface ClientToServerEvents {
   ) => void;
   'play-card': (
     payload: { roomId: string; cardId: string },
+    cb?: (resp: { ok: boolean; error?: string }) => void,
+  ) => void;
+  'call-declaration': (
+    payload: { roomId: string; declarationId: string },
     cb?: (resp: { ok: boolean; error?: string }) => void,
   ) => void;
   'next-hand': () => void;
