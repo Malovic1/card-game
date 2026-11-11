@@ -1,7 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 
 const env = (import.meta as { env?: { VITE_SERVER_URL?: string } }).env;
-const SERVER_URL = env?.VITE_SERVER_URL || 'http://localhost:4000';
+// Default to the same host the page was loaded from, so other devices on the LAN
+// connect to the game server on the host machine instead of their own localhost.
+const SERVER_URL =
+  env?.VITE_SERVER_URL || `${window.location.protocol}//${window.location.hostname}:4000`;
 
 let socket: Socket | null = null;
 
