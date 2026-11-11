@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Socket } from 'socket.io-client';
-import type { Card, GameState, Player, Room, Suit } from './types';
+import type { Card as CardType, GameState, Player, Room, Suit } from './types';
 import { AVATARS, RANK_LABELS, SUIT_LABELS, type RoomSummary } from './types';
 import { connect } from './services/socket';
-import { cardColor, formatPoints, isLegalCard, mustPlayHigher, rankGlyph, sortHand, suitSymbol } from './lib/cards';
+import { formatPoints, isLegalCard, mustPlayHigher, sortHand } from './lib/cards';
+import { Card } from './components/Card';
+import { CARD_IMAGE_MODE, preloadCardImages } from './lib/cardImages';
 
 type Screen = 'home' | 'rooms' | 'lobby' | 'table';
 type Link = 'connecting' | 'online' | 'offline';
@@ -86,6 +88,10 @@ export default function App() {
     sock.on('game-state', onGame);
     sock.on('error', onErr);
     setLink(sock.connected ? 'online' : 'connecting');
+
+    if (CARD_IMAGE_MODE === 'image') {
+      preloadCardImages();
+    }
 
     return () => {
       sock.off('connect', onConnect);
@@ -296,7 +302,7 @@ export default function App() {
   const myTeam: 0 | 1 = mySeat !== null && mySeat % 2 === 1 ? 1 : 0;
   const oppTeam: 0 | 1 = myTeam === 0 ? 1 : 0;
 
-  function canPlay(card: Card): boolean {
+  function canPlay(card: CardType): boolean {
     if (!game || !me || mySeat === null) return false;
     if (game.phase !== 'playing' || game.trick?.complete) return false;
     if (game.currentTurnSeat !== mySeat) return false;
@@ -319,7 +325,7 @@ export default function App() {
     );
   }
 
-  function playCard(card: Card) {
+  function playCard(card: CardType) {
     if (!room || !game || busyRef.current) return;
     if (!canPlay(card)) {
       const led = game.trick?.ledSuit;
@@ -519,8 +525,8 @@ function Table({
   oppTeam: 0 | 1;
   error: string;
   busy: boolean;
-  canPlay: (card: Card) => boolean;
-  onPlay: (card: Card) => void;
+  canPlay: (card: CardType) => boolean;
+  onPlay: (card: CardType) => void;
   onCall: (declarationId: string) => void;
   onLeave: () => void;
   onNext: () => void;
@@ -624,7 +630,7 @@ function Table({
               {partner && <div className="tag">partner</div>}
               {pos !== 'south' && count > 0 && (
                 <div className="pile" aria-label={`${count} karata`}>
-                  <div className="card back mini" />
+                  <Card card={null} size="mini" className="back" />
                   <span>{count}</span>
                 </div>
               )}
@@ -632,15 +638,18 @@ function Table({
           );
         })}
         <div className="trick-area">
-          {game.trick?.plays.map((play) => (
-            <div
-              key={`${play.seat}-${play.card.id}`}
-              className={`played ${visualPosition(play.seat, mySeat)} ${game.trick?.complete && game.trick.winnerSeat === play.seat ? 'won' : ''}`}
-            >
-              <div className="rank" style={{ color: cardColor(play.card.suit) }}>{rankGlyph(play.card.rank)}</div>
-              <div className="suit">{suitSymbol(play.card.suit)}</div>
-            </div>
-          ))}
+          {game.trick?.plays.map((play) => {
+            const pos = visualPosition(play.seat, mySeat);
+            const won = game.trick?.complete && game.trick.winnerSeat === play.seat;
+            return (
+              <Card
+                key={`${play.seat}-${play.card.id}`}
+                card={play.card}
+                size="played"
+                className={`${pos} ${won ? 'won' : ''}`}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -649,16 +658,14 @@ function Table({
           const legal = canPlay(card);
           const gap = index > 0 && sorted[index - 1].suit !== card.suit;
           return (
-            <button
+            <Card
               key={card.id}
-              type="button"
-              className={`card ${gap ? 'gap' : ''} ${myTurn ? (legal ? 'legal' : 'illegal') : 'wait'}`}
+              card={card}
+              size="normal"
               onClick={() => onPlay(card)}
+              className={`${gap ? 'gap' : ''} ${myTurn ? (legal ? 'legal' : 'illegal') : 'wait'}`}
               title={`${RANK_LABELS[card.rank]} · ${SUIT_LABELS[card.suit]}`}
-            >
-              <div className="rank" style={{ color: cardColor(card.suit) }}>{rankGlyph(card.rank)}</div>
-              <div className="suit">{suitSymbol(card.suit)}</div>
-            </button>
+            />
           );
         })}
       </div>
