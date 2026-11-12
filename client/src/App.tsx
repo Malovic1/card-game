@@ -481,7 +481,6 @@ export default function App() {
 
       {screen === 'table' && room && game && mySeat !== null && (
         <Table
-          room={room}
           game={game}
           me={me}
           mySeat={mySeat}
@@ -502,7 +501,6 @@ export default function App() {
 }
 
 function Table({
-  room,
   game,
   me,
   mySeat,
@@ -517,7 +515,6 @@ function Table({
   onNext,
   onAgain,
 }: {
-  room: Room;
   game: GameState;
   me: Player | null;
   mySeat: number;
@@ -549,7 +546,7 @@ function Table({
     if (game.currentTurnSeat !== mySeat) return;
     if (game.trick && game.trick.plays.length > 0) return;
     if ((game.callable?.length ?? 0) === 0) return;
-    game.callable.forEach((offer) => {
+    game.callable?.forEach((offer) => {
       onCall(offer.id);
     });
   }, [game, mySeat, onCall]);
@@ -640,7 +637,6 @@ function Table({
       <div className="felt">
         {game.players.map((p) => {
           const pos = visualPosition(p.seat, mySeat);
-          const count = p.id === me?.id ? p.hand.length : (p.cardCount ?? p.hand.length);
           const active = p.seat === game.currentTurnSeat;
           const partner = pos === 'north';
           if (p.id === me?.id) return null;
