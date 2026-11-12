@@ -236,8 +236,8 @@ h2 { margin: 0 0 6px; }
   position: absolute;
   left: 50%;
   top: 46%;
-  width: 300px;
-  height: 220px;
+  width: 200px;
+  height: 147px;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -355,7 +355,7 @@ h2 { margin: 0 0 6px; }
   .felt .seat .avatar { width: 28px; height: 28px; font-size: 15px; }
   .felt .seat .name { font-size: 10px; line-height: 1.2; }
   .felt .seat.active .avatar { box-shadow: 0 0 0 2px var(--accent), 0 0 10px rgba(240,192,64,0.75); }
-  .trick-area { width: 200px; height: 130px; top: 40%; }
+  .trick-area { width: 133px; height: 87px; top: 40%; }
   .played { width: 36px; height: 56px; }
   .played .rank, .played .suit { font-size: 13px; }
 
