@@ -533,11 +533,48 @@ function Table({
   onAgain: () => void;
 }) {
   const [declDetails, setDeclDetails] = useState<0 | 1 | null>(null);
+  const [declPopup, setDeclPopup] = useState<{ name: string; points: number } | null>(null);
+  const prevDeclCount = useRef(0);
+  const shownHandRef = useRef<number | null>(null);
+  const popupShownRef = useRef(false);
   const myTurn = game.phase === 'playing' && !game.trick?.complete && game.currentTurnSeat === mySeat;
   const led: Suit | null = game.trick && !game.trick.complete ? game.trick.ledSuit : null;
   const turnName = game.players.find((p) => p.seat === game.currentTurnSeat)?.name;
   const winnerName = game.players.find((p) => p.seat === game.trick?.winnerSeat)?.name;
   const sorted = sortHand(me?.hand ?? []);
+
+  // Auto-call declarations when it's your turn and you have callable ones
+  useEffect(() => {
+    if (!game || mySeat === null) return;
+    if (game.currentTurnSeat !== mySeat) return;
+    if (game.trick && game.trick.plays.length > 0) return;
+    if ((game.callable?.length ?? 0) === 0) return;
+    game.callable.forEach((offer) => {
+      onCall(offer.id);
+    });
+  }, [game, mySeat, onCall]);
+
+  // Popup notification when declarations are first made in a hand
+  useEffect(() => {
+    if (!game) return;
+
+    // Reset tracking when a new hand starts
+    if (shownHandRef.current !== game.handNumber) {
+      shownHandRef.current = game.handNumber;
+      popupShownRef.current = false;
+      prevDeclCount.current = 0;
+    }
+
+    // Only show once per hand, when declarations first appear
+    if (popupShownRef.current) return;
+    if (game.declarations.length === 0) return;
+
+    const last = game.declarations[game.declarations.length - 1];
+    setDeclPopup({ name: last.name, points: last.points });
+    popupShownRef.current = true;
+    const timer = window.setTimeout(() => setDeclPopup(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [game]);
 
   let status = '';
   if (game.phase === 'game-over') {
@@ -593,6 +630,11 @@ function Table({
         <button className="btn secondary" type="button" onClick={onLeave}>Izađi</button>
       </header>
 
+      {declPopup && (
+        <div className="decl-popup">
+          {declPopup.name} +{formatPoints(declPopup.points)}
+        </div>
+      )}
       {error && <div className="error banner">{error}</div>}
 
       <div className="felt">

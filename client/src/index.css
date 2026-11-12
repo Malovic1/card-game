@@ -116,9 +116,11 @@ h2 { margin: 0 0 8px; font-size: 20px; }
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 20px;
+  line-height: 1;
   border: 2px solid transparent;
   background: var(--panel);
   color: var(--muted);
@@ -250,6 +252,27 @@ h2 { margin: 0 0 8px; font-size: 20px; }
   font-size: 13px;
   color: var(--muted);
   font-weight: 600;
+}
+.decl-popup {
+  position: fixed;
+  left: 50%;
+  top: 60px;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-weight: 800;
+  font-size: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  z-index: 40;
+  animation: fadeInOut 3s ease-in-out forwards;
+}
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
 }
 
 /* ---- Table surface & seats ---- */
@@ -458,6 +481,7 @@ h2 { margin: 0 0 8px; font-size: 20px; }
   .felt .seat.east { right: 1%; top: 42%; }
   .felt .seat .avatar { width: 32px; height: 32px; font-size: 16px; }
   .felt .seat .name { font-size: 10px; }
+  .avatars .avatar { font-size: 18px; width: 40px; height: 40px; }
 
   .trick-area { width: 180px; height: 140px; top: 50%; }
   .card.played { width: 36px; height: 52px; border-radius: 8px; }
