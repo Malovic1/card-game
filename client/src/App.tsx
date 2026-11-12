@@ -532,12 +532,9 @@ function Table({
   onNext: () => void;
   onAgain: () => void;
 }) {
+  const [declDetails, setDeclDetails] = useState<0 | 1 | null>(null);
   const myTurn = game.phase === 'playing' && !game.trick?.complete && game.currentTurnSeat === mySeat;
   const led: Suit | null = game.trick && !game.trick.complete ? game.trick.ledSuit : null;
-  const trickNo = Math.min(
-    10,
-    game.completedTricks.length + (game.phase === 'playing' ? 1 : 0),
-  );
   const turnName = game.players.find((p) => p.seat === game.currentTurnSeat)?.name;
   const winnerName = game.players.find((p) => p.seat === game.trick?.winnerSeat)?.name;
   const sorted = sortHand(me?.hand ?? []);
@@ -562,60 +559,41 @@ function Table({
   return (
     <>
       <header className="topbar">
-        <div>
-          <strong>{room.name}</strong>
-          <div className="hint">{room.id}</div>
-        </div>
         <div className="scoreboard">
-          <div className={`score ${game.winnerTeam === myTeam ? 'win' : ''}`}>
+          <div
+            className={`score ${game.winnerTeam === myTeam ? 'win' : ''}`}
+            onClick={() => setDeclDetails(declDetails === myTeam ? null : myTeam)}
+          >
             <span>Mi</span>
             <strong>{formatPoints(game.scores[myTeam])}</strong>
           </div>
-          <div className="score mid">
-            <span>do {formatPoints(game.targetPoints)}</span>
-            <small>Štih {trickNo}/10 · ruka {formatPoints(game.handPoints[myTeam])} : {formatPoints(game.handPoints[oppTeam])}</small>
-          </div>
-          <div className={`score ${game.winnerTeam === oppTeam ? 'win' : ''}`}>
+          <div
+            className={`score ${game.winnerTeam === oppTeam ? 'win' : ''}`}
+            onClick={() => setDeclDetails(declDetails === oppTeam ? null : oppTeam)}
+          >
             <span>Oni</span>
             <strong>{formatPoints(game.scores[oppTeam])}</strong>
           </div>
         </div>
+        {declDetails !== null && game.declarations.length > 0 && (
+          <div className="decl-details">
+            {game.declarations
+              .filter((d) => d.seat % 2 === declDetails)
+              .map((d) => {
+                const who = game.players.find((p) => p.seat === d.seat);
+                const label = who?.id === me?.id ? 'Vi' : who?.name ?? '';
+                return (
+                  <span key={`${d.seat}-${d.id}`} className="decl-detail-chip">
+                    {label}: {d.name} +{formatPoints(d.points)}
+                  </span>
+                );
+              })}
+          </div>
+        )}
         <button className="btn secondary" type="button" onClick={onLeave}>Izađi</button>
       </header>
 
       {error && <div className="error banner">{error}</div>}
-      {(game.callable?.length ?? 0) > 0 && (
-        <div className="decl-bar">
-          {(game.callable ?? []).map((offer) => (
-            <button
-              key={offer.id}
-              type="button"
-              className="decl-chip"
-              disabled={!myTurn}
-              onClick={() => onCall(offer.id)}
-            >
-              Zovi {offer.name} · +{formatPoints(offer.points)}
-            </button>
-          ))}
-          <span className="hint">
-            {myTurn ? 'Zovite prije prve karte' : 'Imate najavu — zovite na svom redu, prije prve karte'}
-          </span>
-        </div>
-      )}
-      {game.declarations.length > 0 && (
-        <div className="called-bar">
-          {game.declarations.map((called) => {
-            const who = game.players.find((p) => p.seat === called.seat);
-            const label = who?.id === me?.id ? 'Vi' : who?.name ?? '';
-            return (
-              <span key={`${called.seat}-${called.id}`} className="called-chip">
-                {label}: {called.name} +{formatPoints(called.points)}
-              </span>
-            );
-          })}
-        </div>
-      )}
-      <div className={`status ${myTurn ? 'mine' : ''}`}>{status}</div>
 
       <div className="felt">
         {game.players.map((p) => {
@@ -623,20 +601,16 @@ function Table({
           const count = p.id === me?.id ? p.hand.length : (p.cardCount ?? p.hand.length);
           const active = p.seat === game.currentTurnSeat;
           const partner = pos === 'north';
+          if (p.id === me?.id) return null;
           return (
             <div key={p.seat} className={`seat ${pos} ${active ? 'active' : ''}`}>
               <div className="avatar">{p.icon}</div>
-              <div className="name">{p.id === me?.id ? 'Vi' : p.name}</div>
+              <div className="name">{p.name}</div>
               {partner && <div className="tag">partner</div>}
-              {pos !== 'south' && count > 0 && (
-                <div className="pile" aria-label={`${count} karata`}>
-                  <Card card={null} size="mini" className="back" />
-                  <span>{count}</span>
-                </div>
-              )}
             </div>
           );
         })}
+        <div className="status {myTurn ? 'mine' : ''}">{status}</div>
         <div className="trick-area">
           {game.trick?.plays.map((play) => {
             const pos = visualPosition(play.seat, mySeat);
