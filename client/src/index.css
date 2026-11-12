@@ -286,20 +286,24 @@ h2 { margin: 0 0 6px; }
 .card .suit { font-size: 20px; line-height: 1; }
 
 .my-hand {
-  display: flex;
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  gap: 2px;
   justify-content: center;
   align-items: flex-end;
-  flex: 0 0 auto;
   min-height: 118px;
   padding: 16px 8px 28px;
   z-index: 2;
-  scrollbar-width: none;
 }
-.my-hand::-webkit-scrollbar { display: none; }
-.my-hand .card { margin-left: -34px; position: relative; flex-shrink: 0; }
+.my-hand .card {
+  width: 68px;
+  height: 100px;
+  margin-left: 0;
+  position: relative;
+  flex-shrink: 0;
+}
 .my-hand .card:first-child { margin-left: 0; }
-.my-hand .card.gap { margin-left: -8px; }
+.my-hand .card.gap { margin-left: 0; }
 .my-hand .card.legal { cursor: pointer; }
 .my-hand .card.legal:hover { transform: translateY(-16px); z-index: 4; }
 .my-hand .card:active { transform: scale(0.94); }
@@ -364,9 +368,9 @@ h2 { margin: 0 0 6px; }
   /* Hand: strict 2 rows of 5 (max hand is 10 cards), smaller but fully visible */
   .my-hand {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 3px;
-    justify-items: center;
+    grid-template-columns: repeat(5, auto);
+    gap: 2px;
+    justify-content: center;
     align-items: end;
     min-height: 118px;
     padding: 4px 4px 20px;
